@@ -15,18 +15,20 @@ canvas.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True)
 
 circles = []
 highlight_ids = []
-highlighted_shapes = []  
+highlighted_shapes = []
+previous_highlights = []
+shapes_highlighted = False
+calculated = False
 
 def draw_coordinate_system():
     canvas.delete("all")  
-
     width = canvas.winfo_width()
     height = canvas.winfo_height()
     center_x = width // 2
     center_y = height // 2
 
-    canvas.create_line(center_x, 0, center_x, height, fill="black")  # Y osa
-    canvas.create_line(0, center_y, width, center_y, fill="black")   # X osa
+    canvas.create_line(center_x, 0, center_x, height, fill="black")  
+    canvas.create_line(0, center_y, width, center_y, fill="black")   
 
     for x in range(center_x, width, 50):
         canvas.create_text(x, center_y + 10, text=str(x - center_x), fill="black")
@@ -42,6 +44,7 @@ def draw_coordinate_system():
         draw_circle(circle[1], circle[2], circle[3])
 
 def add_circle():
+    global previous_highlights
     try:
         x = int(entry_x.get())
         y = int(entry_y.get())
@@ -51,6 +54,7 @@ def add_circle():
         circle = Point(x, y).buffer(r)
         circles.append((circle, x, y, r))
         draw_circle(x, y, r)
+        previous_highlights = highlight_ids.copy()
     except ValueError as e:
         messagebox.showerror("Error", f"Neispravan unos: {e}")
 
@@ -84,27 +88,27 @@ def highlight_shapes():
                 for j, c2 in enumerate(circles):
                     if i != j:
                         if not c1[0].disjoint(c2[0]):
-                            regions.append(c1[0].difference(c2[0]))  
-                            regions.append(c2[0].difference(c1[0]))  
+                            regions.append(c1[0].difference(c2[0]))
+                            regions.append(c2[0].difference(c1[0]))
 
             if not intersection.is_empty:
-                regions.append(intersection)  
+                regions.append(intersection)
 
             for region in regions:
                 if not region.is_empty:
                     if region.equals(intersection):
-                        color = "green" 
+                        color = "green"
                     else:
-                        color = "#F08080"  
+                        color = "#F08080"
                     polygon_id = draw_polygon(region, color, color)
                     highlight_ids.append(polygon_id)
-                    highlighted_shapes.append((region, color, color))  
+                    highlighted_shapes.append((region, color, color))
         else:
             union = unary_union(union_circles)
             if not union.is_empty:
                 for region in [c.buffer(0) for c in union_circles]:
                     if not region.is_empty:
-                        color = "#F08080"  
+                        color = "#F08080"
                         polygon_id = draw_polygon(region, color, color)
                         highlight_ids.append(polygon_id)
                         highlighted_shapes.append((region, color, color))
@@ -118,6 +122,7 @@ def draw_polygon(polygon, outline_color, fill_color):
         return canvas.create_polygon(coords, outline=outline_color, fill=fill_color, stipple="gray50")
 
 def calculate():
+    global calculated
     if len(circles) < 2:
         messagebox.showinfo("Rezultat", "Sistem mora imati minimum dva kruga")
         return
@@ -139,12 +144,47 @@ def calculate():
             canvas.delete(item_id)
         highlight_ids.clear()
         highlighted_shapes.clear()
+        calculated = True
 
     except Exception as e:
         messagebox.showerror("Error", f"Došlo je do greške: {e}")
 
+def toggle_highlight():
+    if not calculated:
+        messagebox.showwarning("Warning", "Prvo morate izračunati")
+        return
+
+    global shapes_highlighted
+    if shapes_highlighted:
+        for item_id in highlight_ids:
+            canvas.delete(item_id)
+        highlight_ids.clear()
+        highlighted_shapes.clear()
+    else:
+        highlight_shapes()
+    shapes_highlighted = not shapes_highlighted
+
+def undo_last_circle():
+    global previous_highlights, calculated
+    if circles:
+        circles.pop()
+        canvas.delete("all")
+        draw_coordinate_system()
+        for circle in circles:
+            draw_circle(circle[1], circle[2], circle[3])
+        highlight_ids = previous_highlights.copy()
+        for item_id in highlight_ids:
+            canvas.itemconfig(item_id, outline="green")
+        previous_highlights = []
+        calculated = False  
+
 def exit_app():
     root.destroy()
+
+def handle_resize(event):
+    draw_coordinate_system()
+    if shapes_highlighted:
+        highlight_shapes()
 
 frame_input = ctk.CTkFrame(root)
 frame_input.pack(side=ctk.LEFT, padx=20, pady=20, fill=ctk.Y)
@@ -153,7 +193,7 @@ label_radius = ctk.CTkLabel(frame_input, text="Prečnik:")
 label_radius.grid(row=0, column=0, padx=10, pady=10, sticky="e")
 entry_radius = ctk.CTkEntry(frame_input)
 entry_radius.grid(row=0, column=1, padx=10, pady=10)
-entry_radius.insert(0, "10")  
+entry_radius.insert(0, "100")  
 
 label_x = ctk.CTkLabel(frame_input, text="X koordinata centra:")
 label_x.grid(row=1, column=0, padx=10, pady=10, sticky="e")
@@ -176,14 +216,20 @@ add_button.grid(row=0, column=0, padx=10)
 calc_button = ctk.CTkButton(button_frame, text="Izračunaj", command=calculate, fg_color="#1976d2", text_color="white", corner_radius=10)
 calc_button.grid(row=0, column=1, padx=10)
 
+toggle_highlight_button = ctk.CTkButton(frame_input, text="Osenči rezultate", command=toggle_highlight, fg_color="#ed6c02", text_color="white", hover_color="#e65100", corner_radius=10)
+toggle_highlight_button.grid(row=4, column=0, padx=10, sticky="s")
+
+undo_button = ctk.CTkButton(frame_input, text="Undo", command=undo_last_circle, fg_color="#ed6c02", text_color="white", hover_color="#e65100", corner_radius=10)
+undo_button.grid(row=4, column=1, padx=10, sticky="s")
+
 exit_button = ctk.CTkButton(frame_input, text="Izlaz", command=exit_app, fg_color="#d32f2f", text_color="white", hover_color="#b71c1c", corner_radius=10)
-exit_button.grid(row=4, column=0, columnspan=2, pady=10, sticky="s")
+exit_button.grid(row=5, column=0, columnspan=2, pady=10, sticky="s")
 
 frame_input.grid_columnconfigure(0, weight=1)
 frame_input.grid_columnconfigure(1, weight=1)
 
 root.after(100, draw_coordinate_system)
 
-canvas.bind("<Configure>", lambda event: draw_coordinate_system())
+canvas.bind("<Configure>", handle_resize)
 
 root.mainloop()
