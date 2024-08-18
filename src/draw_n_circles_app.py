@@ -151,7 +151,7 @@ def calculate():
 
 def toggle_highlight():
     if not calculated:
-        messagebox.showwarning("Warning", "Prvo morate izračunati")
+        messagebox.showinfo("Upozorenje", "Prvo morate izračunati")
         return
 
     global shapes_highlighted
