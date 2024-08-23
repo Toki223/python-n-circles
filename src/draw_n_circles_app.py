@@ -76,7 +76,7 @@ def add_circle():
         y = int(entry_y.get())
         r = int(entry_radius.get())
         if r <= 0:
-            raise ValueError("Prečnik mora biti pozitivan")
+            raise ValueError("Poluprečnik mora biti pozitivan")
         circle = Point(x, y).buffer(r)
         circles.append((circle, x, y, r))
         draw_circle(x, y, r)
@@ -223,7 +223,7 @@ def on_coordinate_change(*args):
 frame_input = ctk.CTkFrame(root)
 frame_input.pack(side=ctk.LEFT, padx=20, pady=20, fill=ctk.Y)
 
-label_radius = ctk.CTkLabel(frame_input, text="Prečnik (cm):")
+label_radius = ctk.CTkLabel(frame_input, text="Poluprečnik (cm):")
 label_radius.grid(row=0, column=0, padx=10, pady=10, sticky="e")
 entry_radius = ctk.CTkEntry(frame_input)
 entry_radius.grid(row=0, column=1, padx=10, pady=10)
